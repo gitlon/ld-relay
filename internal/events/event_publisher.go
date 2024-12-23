@@ -19,10 +19,11 @@ import (
 )
 
 const (
-	defaultFlushInterval = time.Minute
-	defaultCapacity      = 1000
-	inputQueueSize       = 100
-	defaultEventsURIPath = "/bulk"
+	defaultFlushInterval     = time.Minute
+	defaultCapacity          = 1000
+	inputQueueSize           = 100
+	defaultEventsURIPath     = "/bulk"
+	capacityWarnLimitPercent = 90
 )
 
 var (
@@ -261,6 +262,10 @@ func (p *HTTPEventPublisher) append(batch eventBatch) {
 		p.overflowed = false
 	}
 	queue.events = append(queue.events, batch.events[:taken]...)
+
+	if !p.overflowed && len(queue.events) > p.capacity*capacityWarnLimitPercent/100 {
+		p.loggers.Warnf("Event queue %d is at %d%% of capacity %d. Consider increasing capacity to avoid dropping events.", len(queue.events), capacityWarnLimitPercent, p.capacity)
+	}
 }
 
 func (p *HTTPEventPublisher) ReplaceCredential(newCredential credential.SDKCredential) { //nolint:golint // method is already documented in interface
